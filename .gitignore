@@ -1,0 +1,14 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.superpowers/
+data/
+reference/
+exports/
+tests/fixtures/private/
+*.xlsm
+web/node_modules/
+web/dist/
