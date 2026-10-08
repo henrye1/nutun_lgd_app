@@ -81,4 +81,5 @@ def test_config_is_frozen_and_validated():
         c.preset = "x"  # frozen
     assert set(PRESETS) == {"PARITY_JUL26", "CORRECTED"}
     assert c.quirk_flags()["Q1.month_offset"] == "-2"
+    assert "Q22.valuation_sse_t_max" in c.quirk_flags() and "Q22.valuation_sensitivity_t_max" in c.quirk_flags()
     assert RunConfig.model_validate_json(c.model_dump_json()) == c

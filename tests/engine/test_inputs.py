@@ -31,9 +31,9 @@ def test_to_month_accepts_serials_strings_and_datetimes():
 
 
 def test_lookup_vb_override_wins_even_when_blank():
-    override = pd.DataFrame({"wClientCode": [99910722, 99910731], "VB": [15.0, np.nan], "VB_raw": [15.0, np.nan]})
-    source = pd.DataFrame({"wClientCode": [99910722, 99910731, 46], "VB": [11.0, 44.0, 15.0]})
-    out = lookup_vb(pd.Series([99910722, 99910731, 46, 1], dtype="int64"), override, source)
+    override = pd.DataFrame({"wClientCode": [999000001, 999000002], "VB": [15.0, np.nan], "VB_raw": [15.0, np.nan]})
+    source = pd.DataFrame({"wClientCode": [999000001, 999000002, 46], "VB": [11.0, 44.0, 15.0]})
+    out = lookup_vb(pd.Series([999000001, 999000002, 46, 1], dtype="int64"), override, source)
     assert out.tolist()[0] == 15.0 and pd.isna(out.iloc[1]) and out.iloc[2] == 15.0 and pd.isna(out.iloc[3])
 
 

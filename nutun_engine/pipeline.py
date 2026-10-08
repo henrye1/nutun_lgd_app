@@ -9,7 +9,7 @@ from datetime import date
 import numpy as np
 import pandas as pd
 
-from nutun_engine.bounds import BoundsResult, prediction_limits
+from nutun_engine.bounds import BoundsResult, prediction_limits, sensitivity
 from nutun_engine.config import RunConfig
 from nutun_engine.curves import CurveSet, assemble_curve_set
 from nutun_engine.fit import FitResult, fit_block, fit_grid
@@ -35,6 +35,8 @@ class CurveRun:
     fits: dict[tuple[str, int, int], FitResult]
     calc_fits: dict[tuple[str, int], FitResult]  # (mode, vb): fits of the VALUATION_CALC grid
     bounds: dict[int, BoundsResult]
+    bounds_params_from: dict[int, str]  # vb → which fit parameterised the bounds
+    bounds_sensitivity: dict[int, dict[str, float]]  # vb → Cohort!J4:J9 (SSE at m, s, cn ±1%)
     curve_set: CurveSet
     warnings: tuple[str, ...] = field(default_factory=tuple)
     timings: dict[str, float] = field(default_factory=dict)
@@ -105,7 +107,7 @@ def run_curves(
     for mode in modes:
         if mode == "TWO_PARAM_FIXED_MU":
             continue  # the fixed-mu table is keyed by rolling month k
-        for r in fit_grid(grid_calc, cfg, mode, {}, warm=warm):
+        for r in fit_grid(grid_calc, cfg, mode, {}, warm=warm, keep_t_max=cfg.bounds.sse_t_max):
             calc_fits[(mode, r.vb)] = r
             if r.status == "NOT_FITTABLE":
                 warnings.append(f"{mode} VALUATION_CALC VB{r.vb}: not fittable ({r.reason})")
@@ -117,6 +119,9 @@ def run_curves(
     mt = cfg.bounds.matrix_t_max or {}
     qt = cfg.bounds.sse_t_max or {}
     bounds: dict[int, BoundsResult] = {}
+    params_from: dict[int, str] = {}
+    sens: dict[int, dict[str, float]] = {}
+    st = cfg.bounds.sensitivity_t_max or {}
     for vb in cfg.curves.cohorts:
         f, where = _bound_params(cfg, vb, fits, calc_fits, grid_calc)
         if f is None or f.status == "NOT_FITTABLE":
@@ -130,6 +135,9 @@ def run_curves(
         )
         warnings += list(b.warnings)
         bounds[vb] = b
+        params_from[vb] = where
+        sens[vb] = sensitivity(data_grid.t, data_grid.constrained[:, c], data_grid.keep[:, c], f.m, f.s, f.cn,
+                               cfg.bounds.points, t_max=st.get(vb))
     timings["bounds"] = time.perf_counter() - t1
 
     t1 = time.perf_counter()
@@ -138,7 +146,7 @@ def run_curves(
     warnings += list(cs.warnings)
     timings["curves"] = time.perf_counter() - t1
     timings["total"] = time.perf_counter() - t0
-    return CurveRun(D, cfg, grid_calc, grids, fits, calc_fits, bounds, cs, tuple(warnings), timings)
+    return CurveRun(D, cfg, grid_calc, grids, fits, calc_fits, bounds, params_from, sens, cs, tuple(warnings), timings)
 
 
 def _bound_params(cfg: RunConfig, vb: int, fits, calc_fits, grid_calc):

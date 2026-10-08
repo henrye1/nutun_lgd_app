@@ -244,14 +244,20 @@ def fit_block(t, y, keep, *, k, report_month, vb, mode: FitMode, cfg: RunConfig,
     )
 
 
-def fit_grid(grid: YieldGrid, cfg: RunConfig, mode: FitMode, mu_lookup, warm=None, manual=None) -> list[FitResult]:
+def fit_grid(grid: YieldGrid, cfg: RunConfig, mode: FitMode, mu_lookup, warm=None, manual=None,
+             keep_t_max: dict[int, int] | None = None) -> list[FitResult]:
+    """`keep_t_max[vb]` (Q22) drops kept points with t > that from the fit, as the valuation Cohort sheets'
+    hard-coded SSE ranges do (Cohort_44!B12 sums t <= 48 of 49 kept points)."""
     out = []
     for vb in grid.cohorts:
         c = grid.column(vb)
         key = (grid.k, vb)
+        keep = grid.keep[:, c]
+        if keep_t_max and keep_t_max.get(vb) is not None:
+            keep = keep & (grid.t <= keep_t_max[vb])
         out.append(
             fit_block(
-                grid.t, grid.constrained[:, c], grid.keep[:, c], k=grid.k, report_month=grid.report_month, vb=vb,
+                grid.t, grid.constrained[:, c], keep, k=grid.k, report_month=grid.report_month, vb=vb,
                 mode=mode, cfg=cfg, mu=(mu_lookup or {}).get(key), manual=(manual or {}).get(key),
                 warm=(warm or {}).get(key),
             )

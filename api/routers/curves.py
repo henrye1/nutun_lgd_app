@@ -25,7 +25,7 @@ class RunRequest(BaseModel):
     report_month: date
     preset: Literal["PARITY_JUL26", "CORRECTED"] = "PARITY_JUL26"
     source: Literal["db", "fixtures"] = "db"
-    modes: list[FitMode] = Field(default=["THREE_PARAM", "TWO_PARAM_FIXED_MU"])
+    modes: list[Literal["THREE_PARAM", "TWO_PARAM_FIXED_MU"]] = Field(default=["THREE_PARAM", "TWO_PARAM_FIXED_MU"])
 
 
 def _records(df: pd.DataFrame) -> list[dict]:
@@ -58,7 +58,10 @@ def start_run(req: RunRequest, settings: Settings = Depends(get_settings)) -> di
             status_code=503,
             detail=f"could not load inputs from {req.source}: {type(exc).__name__}: {str(exc)[:300]}",
         )
-    run = run_curves(inputs, cfg, req.report_month, modes=tuple(req.modes))
+    try:
+        run = run_curves(inputs, cfg, req.report_month, modes=tuple(req.modes))
+    except (ValueError, IndexError, KeyError) as exc:  # a configuration the engine refuses (e.g. ma_missing = FAIL)
+        raise HTTPException(status_code=422, detail=f"curve run failed: {type(exc).__name__}: {str(exc)[:300]}")
     meta = {
         "report_month": req.report_month.isoformat(),
         "preset": req.preset,
@@ -111,6 +114,7 @@ def bounds(run_id: str, vb: int) -> dict:
         "vb": vb, "k": b.k, "points": b.points, "n_points": b.n_points, "p": b.p, "df": b.df, "sse": b.sse,
         "s_e": b.s_e, "t_mult": b.t_mult, "V": b.V.tolist(), "W": b.W.tolist(), "P": b.P.tolist(), "Q": b.Q.tolist(),
         "table": _records(run.bounds_table(vb)), "warnings": list(b.warnings),
+        "sensitivity": run.bounds_sensitivity.get(vb, {}), "params_from": run.bounds_params_from.get(vb, ""),
     }
 
 

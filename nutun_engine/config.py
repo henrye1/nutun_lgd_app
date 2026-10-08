@@ -176,6 +176,9 @@ class RunConfig(_Frozen):
             "Q14.p_rule": self.bounds.p_rule,
             "Q12.vb15_ub_from_vb11": str(self.bounds.q12_vb15_blank_from_vb11),
             "Q22.valuation_matrix_t_max": "none" if self.bounds.matrix_t_max is None else str(self.bounds.matrix_t_max),
+            "Q22.valuation_sse_t_max": "none" if self.bounds.sse_t_max is None else str(self.bounds.sse_t_max),
+            "Q22.valuation_sensitivity_t_max": "none" if self.bounds.sensitivity_t_max is None
+            else str(self.bounds.sensitivity_t_max),
             "Q16.offset_basis": self.curves.offset_basis,
             "Q17.r2_zero": self.fli.r2_zero,
             "Q18.age_basis": self.valuation.age_basis,

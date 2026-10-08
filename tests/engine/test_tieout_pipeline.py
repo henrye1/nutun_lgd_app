@@ -45,3 +45,17 @@ def test_parity_curve_run_end_to_end(fixtures_dir, expected):
     print("parity UB vs Curves!H:M max rel diff: " + ", ".join(f"VB{vb} {r:.2e}" for vb, r in report.items()))
     b11 = run.bounds[11]
     assert b11.n_points == expected["valuation_cohort11"]["n"]
+
+
+def test_parity_calc_fit_uses_the_sheets_truncated_sse_objective(fixtures_dir):
+    """Cohort_44!B12 sums t <= 48 of 49 kept points (Q22); the parity calc fit must minimise that objective."""
+    inputs = load_inputs_from_fixtures(fixtures_dir)
+    run = run_curves(inputs, parity_jul26(), D, modes=("THREE_PARAM",))
+    for vb in VBS:
+        p = pd.read_parquet(fixtures_dir / "valuation" / f"cohort_{vb}_panel.parquet").set_index(["row", "col"])
+        s_wb, cn_wb = (float(p.loc[(r, "B"), "value_num"]) for r in (5, 6))
+        f = run.calc_fits[("THREE_PARAM", vb)]
+        if vb in (11, 22):
+            continue  # VB11: the sheet holds the rolling k=1 fit (override); VB22: a Solver local optimum
+        tol = 5e-5 if vb == 44 else 2e-3  # VB44 pins the truncated objective; the rest is Solver-vs-LM noise
+        assert abs(f.s - s_wb) < tol and abs(f.cn - cn_wb) < tol, (vb, f.s, s_wb, f.cn, cn_wb)
