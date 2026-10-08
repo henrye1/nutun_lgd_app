@@ -14,3 +14,12 @@ Spec: `Nutun_AC_Valuation_App_Specification.md`.
 
 ## Layout
 See spec §3.3. `nutun_engine/` is the calculation engine (no I/O); `api/` is FastAPI; `web/` is the React front end.
+
+## Run
+`start.bat` builds the front end once, starts the API on http://127.0.0.1:8000 and opens the Data page.
+For development: `uv run --env-file .env uvicorn api.main:app --reload` and, in `web/`, `npm run dev` (proxies `/api`).
+
+## Tests
+- `uv run pytest` — engine + API unit tests; tie-outs run when `tests/fixtures/private/` exists.
+- `uv run --env-file .env pytest -m db` — live database checks (needs `sql/fn_APP_Info.sql` deployed).
+- `cd web && npm test` — front-end tests.
