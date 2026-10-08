@@ -90,6 +90,12 @@ class BoundsSection(_Frozen):
     params_k: int = 1
     points: Literal["KEPT", "CONTIGUOUS_PREFIX"] = "CONTIGUOUS_PREFIX"
     p_rule: Literal["M_AT_BOUND_ONLY", "FIXED_MU_IS_2"] = "M_AT_BOUND_ONLY"  # Q14
+    q12_vb15_blank_from_vb11: bool = True  # Q12: Curves!I5:I503 tests Cohort_11 for the VB15 upper bound
+    # Q22: the valuation Cohort_xx sheets sum X'WX / P (AF5:AF10, AF20:AF22) and the ±1% sensitivity (J4:J9)
+    # over hard-coded row ranges per sheet; they end before the last used point for VB15, VB22 and VB44.
+    matrix_t_max: dict[int, int] | None = {11: 61, 15: 53, 22: 55, 23: 48, 25: 48, 44: 48}
+    sensitivity_t_max: dict[int, int] | None = {11: 61, 15: 53, 22: 55, 23: 43, 25: 26, 44: 48}
+    sse_t_max: dict[int, int] | None = {11: 61, 15: 55, 22: 57, 23: 48, 25: 48, 44: 48}  # Cohort!B12 ranges
 
 
 class ValuationSection(_Frozen):
@@ -160,6 +166,8 @@ class RunConfig(_Frozen):
             "Q13.vb_source": self.book.vb_source,
             "Q14.bounds_points": self.bounds.points,
             "Q14.p_rule": self.bounds.p_rule,
+            "Q12.vb15_ub_from_vb11": str(self.bounds.q12_vb15_blank_from_vb11),
+            "Q22.valuation_matrix_t_max": "none" if self.bounds.matrix_t_max is None else str(self.bounds.matrix_t_max),
             "Q16.offset_basis": self.curves.offset_basis,
             "Q17.r2_zero": self.fli.r2_zero,
             "Q18.age_basis": self.valuation.age_basis,
@@ -192,7 +200,7 @@ def corrected() -> RunConfig:
             "curves": base.curves.model_copy(update={"t_max": 600}),
             "bounds": BoundsSection(
                 data_rule_set="ROLLING", data_k=0, params_fit_mode="THREE_PARAM", params_k=0, points="KEPT",
-                p_rule="FIXED_MU_IS_2",
+                p_rule="FIXED_MU_IS_2", q12_vb15_blank_from_vb11=False, matrix_t_max=None, sensitivity_t_max=None, sse_t_max=None,
             ),
             "valuation": base.valuation.model_copy(update={"month_offset": 0, "bound_age": None}),
             "capping": CappingSection(ac_capped_display="ONLY_WHEN_APPLIES"),
