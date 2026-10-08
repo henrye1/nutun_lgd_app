@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from nutun_engine.config import RunConfig
-from nutun_engine.dates import edate, month_index_s
+from nutun_engine.dates import datedif_m, edate, eomonth, month_index, month_index_s
 from nutun_engine.inputs import RunInputs, code999, lookup_vb
 
 CALC_COLUMNS = [
@@ -78,3 +78,81 @@ def prepare_valuation_calc(inputs: RunInputs, cfg: RunConfig, report_month: date
         books = sorted(df.loc[no_master, "wClientCode"].unique().tolist())
         warnings.append(f"{len(books)} payment books have no ACM_Master row and were excluded: {books[:10]}")
     return PrepResult(df[CALC_COLUMNS], warnings)
+
+
+ROLLING_TK_COLUMNS = [
+    "wClientCode", "MaxPaymentMonth", "Code999", "VB", "ChargeOffDate", "Face", "CC", "CC999", "ExclOK",
+    "Age_at_k0", "kmin",
+]
+ROLLING_PAY_COLUMNS = [
+    "wClientCode", "CC", "PaymentMonth", "curPayment", "VB", "Count", "R2", "FLIadj", "balance", "kmin", "kmax",
+]
+
+
+@dataclass(frozen=True)
+class RollingPrep:
+    payments: pd.DataFrame
+    tranche_keys: pd.DataFrame
+    warnings: list[str] = field(default_factory=list)
+
+
+def _age_at_k0(chargeoff: pd.Series, anchor: date) -> pd.Series:
+    """Tranche_Keys!J: DATEDIF(EOMONTH(co,0), EOMONTH(anchor,0), "m") + 1; blank when no charge-off."""
+    end = eomonth(anchor)
+    out = []
+    for v in chargeoff:
+        if pd.isna(v):
+            out.append(np.nan)
+            continue
+        co = eomonth(pd.Timestamp(v).date())
+        if co <= end:
+            out.append(float(datedif_m(co, end) + 1))
+        else:  # charged off after the anchor (historical run): plain month difference, ≤ 0
+            out.append(float(month_index(end) - month_index(co) + 1))
+    return pd.Series(out, index=chargeoff.index, dtype="float64")
+
+
+def prepare_rolling(inputs: RunInputs, cfg: RunConfig, report_month: date) -> RollingPrep:
+    warnings: list[str] = []
+    pay = _payments_to(inputs, report_month)
+    master = _master_first(inputs)
+    anchor = report_month  # Cfg_MaxMonth = latest payment month in data = D for the parity run
+
+    tk = pay.groupby("wClientCode", sort=True).PaymentMonth.max().rename("MaxPaymentMonth").reset_index()
+    tk["MaxPaymentMonth"] = tk.MaxPaymentMonth.astype("datetime64[ns]")
+    tk["Code999"] = code999(tk.wClientCode)
+    tk["VB"] = lookup_vb(tk.Code999, inputs.vb_override, inputs.vb[["wClientCode", "VB"]])
+    tk["ChargeOffDate"] = tk.wClientCode.map(master["dtChargeOffDate"]).astype("datetime64[ns]")
+    tk["Face"] = tk.wClientCode.map(inputs.master.groupby("wClientCode").curOriginalCapital.sum()).fillna(0.0)
+    tk["CC"] = tk.wClientCode.map(master["CustomerCode"]).astype("float64")
+    cc_ok = tk.CC.notna()
+    tk["CC999"] = pd.Series(np.nan, index=tk.index, dtype="float64")
+    tk.loc[cc_ok, "CC999"] = code999(tk.loc[cc_ok, "CC"]).astype("float64")
+    if cfg.payments.exclusion_applied_rolling:  # Tranche_Keys!I: live in the July-26 workbooks (see config)
+        tk["ExclOK"] = (~tk.CC999.isin(cfg.payments.exclusion_list)).astype("int64")
+    else:
+        tk["ExclOK"] = 1
+    tk["Age_at_k0"] = _age_at_k0(tk.ChargeOffDate, anchor)
+    max_age = np.where(tk.VB == 44, cfg.curves.max_age_vb44, cfg.curves.max_age)
+    kmin = np.maximum(0.0, tk.Age_at_k0 - max_age)
+    tk["kmin"] = np.where(tk.ExclOK == 0, 9999.0, kmin).astype("float64")
+    if tk.ChargeOffDate.isna().any():
+        books = sorted(tk.loc[tk.ChargeOffDate.isna(), "wClientCode"].tolist())
+        warnings.append(
+            f"{len(books)} tranches have no charge-off date (kmin blank, excluded from every grid): {books[:10]}"
+        )
+    tk = tk[ROLLING_TK_COLUMNS]
+
+    p = pay[["wClientCode", "CC", "PaymentMonth", "curPayment"]].merge(
+        tk[["wClientCode", "VB", "Face", "kmin", "MaxPaymentMonth"]], on="wClientCode", how="left"
+    )
+    first = p.groupby("wClientCode").PaymentMonth.transform("min")
+    p["Count"] = (month_index_s(p.PaymentMonth) - month_index_s(first) + 1).astype("int64")  # ACM_Payments!H
+    p["R2"] = _r2(p.PaymentMonth, inputs, cfg, cfg.fli.missing_hist_month_rolling)  # ACM_Payments!I
+    p["FLIadj"] = p.curPayment * p.R2  # ACM_Payments!J (NaN when R2 is blank)
+    p["balance"] = p.Face.astype("float64")  # ACM_Payments!K
+    if cfg.curves.offset_basis == "GLOBAL_CUTOFF":
+        p["kmax"] = (month_index(report_month) - month_index_s(p.PaymentMonth)).astype("int64")
+    else:  # ACM_Payments!M: DATEDIF to the tranche's own last payment month
+        p["kmax"] = (month_index_s(p.MaxPaymentMonth) - month_index_s(p.PaymentMonth)).astype("int64")
+    return RollingPrep(p[ROLLING_PAY_COLUMNS], tk, warnings)

@@ -11,6 +11,7 @@ def test_parity_preset_matches_spec_section_8():
     assert c.preset == "PARITY_JUL26"
     assert c.run.report_month == date(2026, 7, 1) and c.run.book_list_source == "ACM_VB_ALLOC"
     assert c.payments.vb44_rule == "AS_DELIVERED" and c.payments.exclusion_applied is False
+    assert c.payments.exclusion_applied_rolling is True  # Config!B12 is FALSE (boolean); FALSE=0 is FALSE in Excel
     assert c.payments.exclusion_list == [99910293, 99910155]
     assert c.fli.missing_hist_month_calc == "ONE" and c.fli.missing_hist_month_rolling == "DROP_AMOUNT"
     assert c.fli.r2_zero == "ZERO" and c.fli.missing_fwd_month == "ZERO"
@@ -47,6 +48,7 @@ def test_corrected_preset_differs_only_where_spec_says():
     assert c.forecast.cohort_costs is True and c.curves.t_max == 600
     assert c.capping.ac_capped_display == "ONLY_WHEN_APPLIES"
     assert c.fli.missing_hist_month_rolling == "ONE"
+    assert c.payments.exclusion_applied_rolling is False and c.payments.exclusion_applied is False
     # undecided keys (§19) keep the parity value
     assert c.book.vb_source == p.book.vb_source and c.fli.r2_zero == p.fli.r2_zero
     assert c.valuation.age_basis == p.valuation.age_basis

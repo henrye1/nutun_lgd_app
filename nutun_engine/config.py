@@ -33,7 +33,10 @@ class RunSection(_Frozen):
 class PaymentsSection(_Frozen):
     vb44_rule: Literal["AS_DELIVERED", "REAPPLY_AT_D"] = "AS_DELIVERED"
     exclusion_list: list[int] = [99910293, 99910155]
-    exclusion_applied: bool = False
+    exclusion_applied: bool = False  # VALUATION_CALC: Calc!T2 compares text with a number → inert
+    # ROLLING: Tranche_Keys!I2 tests Cfg_ApplyExcl=0, but Config!B12 holds the boolean FALSE and Excel's
+    # FALSE=0 is FALSE, so the two books ARE excluded from every rolling grid in the July-26 workbooks.
+    exclusion_applied_rolling: bool = True
 
 
 class FliSection(_Frozen):
@@ -147,7 +150,7 @@ class RunConfig(_Frozen):
             "Q1.month_offset": str(self.valuation.month_offset),
             "Q2.missing_fwd_month": self.fli.missing_fwd_month,
             "Q3.bound_age": "age_capping" if self.valuation.bound_age is None else str(self.valuation.bound_age),
-            "Q4.exclusion_applied": str(self.payments.exclusion_applied),
+            "Q4.exclusion_applied": f"calc={self.payments.exclusion_applied},rolling={self.payments.exclusion_applied_rolling}",
             "Q6.ac_capped_display": self.capping.ac_capped_display,
             "Q8.forecast_cohort_costs": str(self.forecast.cohort_costs),
             "Q9.bounds": f"data={self.bounds.data_rule_set}@k{self.bounds.data_k},"
@@ -179,6 +182,7 @@ def corrected() -> RunConfig:
     return base.model_copy(
         update={
             "preset": "CORRECTED",
+            "payments": base.payments.model_copy(update={"exclusion_applied_rolling": False}),
             "fli": base.fli.model_copy(
                 update={"missing_hist_month_rolling": "ONE", "missing_fwd_month": "ONE_AND_WARN"}
             ),
