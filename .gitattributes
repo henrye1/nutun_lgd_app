@@ -1,0 +1,6 @@
+# Normalise line endings in git (LF in the repository); the OS checkout is left to core.autocrlf.
+* text=auto
+*.bat text eol=crlf
+*.parquet binary
+*.xlsm binary
+*.png binary
