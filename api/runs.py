@@ -23,6 +23,12 @@ class RunHolder:
                 self._runs.popitem(last=False)
         return rid
 
+    def replace(self, run_id: str, run: CurveRun, meta: dict) -> None:
+        with self._lock:
+            if run_id not in self._runs:
+                raise KeyError(run_id)
+            self._runs[run_id] = (run, {**meta, "run_id": run_id})
+
     def get(self, run_id: str):
         with self._lock:
             return self._runs.get(run_id)

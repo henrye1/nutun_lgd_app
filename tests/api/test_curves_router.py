@@ -81,3 +81,49 @@ def test_run_from_fixtures_and_read_back(fixtures_dir):
     csv = c.get(f"/api/curves/{rid}/paste-block.csv")
     assert csv.status_code == 200 and csv.text.splitlines()[0].startswith("t,11,15,22,23,25,44,UB 11")
     assert len(c.get("/api/curves/runs").json()) == 2
+
+
+@pytest.mark.tieout
+def test_summary_and_refit_round_trip(fixtures_dir):
+    c = TestClient(app)
+    rid = c.post(
+        "/api/curves/run", json={"report_month": "2026-07-01", "preset": "PARITY_JUL26", "source": "fixtures"}
+    ).json()["run_id"]
+    s = c.get(f"/api/curves/{rid}/summary").json()
+    assert s["run_id"] == rid and s["cohorts"] == [11, 15, 22, 23, 25, 44] and s["ma_members"]["11"] == [0, 1, 2, 3, 4, 5]
+    assert s["bounds_params_from"]["11"].startswith("override ROLLING") and "Q22.valuation_matrix_t_max" in s["quirk_flags"]
+    before = c.get(f"/api/curves/{rid}/curves").json()[0]["curve"]
+    r = c.post(
+        f"/api/curves/{rid}/refit", json={"grid": "ROLLING", "k": 0, "vb": 11, "mode": "MANUAL", "m": 4.0, "s": 1.5, "cn": 0.2}
+    )
+    assert r.status_code == 200 and r.json()["fit"]["status"] == "MANUAL" and r.json()["fit"]["m"] == 4.0
+    assert c.get(f"/api/curves/{rid}/fit/MANUAL/0/11").status_code == 200
+    # parity MA uses the fixed-mu fits, so a MANUAL block does not move the curve …
+    assert c.get(f"/api/curves/{rid}/curves").json()[0]["curve"] == before
+    # … refitting the fixed-mu block does
+    r2 = c.post(f"/api/curves/{rid}/refit", json={"grid": "ROLLING", "k": 0, "vb": 11, "mode": "TWO_PARAM_FIXED_MU", "mu": 5.5})
+    assert r2.status_code == 200 and r2.json()["fit"]["m"] == 5.5
+    assert c.get(f"/api/curves/{rid}/curves").json()[0]["curve"] != before
+    assert c.get(f"/api/curves/{rid}/summary").json()["ma_members"]["11"] == [0, 1, 2, 3, 4, 5]
+    meta = next(m for m in c.get("/api/curves/runs").json() if m["run_id"] == rid)
+    assert "refit" in meta["timings"]
+
+
+def test_refit_validation_and_unknown_run():
+    c = TestClient(app)
+    assert c.post("/api/curves/nope/refit", json={"grid": "ROLLING", "k": 0, "vb": 11, "mode": "THREE_PARAM"}).status_code == 404
+    assert c.get("/api/curves/nope/summary").status_code == 404
+
+
+@pytest.mark.tieout
+def test_refit_bad_block_and_manual_without_params(fixtures_dir):
+    c = TestClient(app)
+    rid = c.post(
+        "/api/curves/run",
+        json={"report_month": "2026-07-01", "preset": "PARITY_JUL26", "source": "fixtures", "modes": ["TWO_PARAM_FIXED_MU"]},
+    ).json()["run_id"]
+    assert c.post(f"/api/curves/{rid}/refit", json={"grid": "ROLLING", "k": 12, "vb": 11, "mode": "THREE_PARAM"}).status_code == 422
+    assert c.post(f"/api/curves/{rid}/refit", json={"grid": "ROLLING", "k": 0, "vb": 11, "mode": "MANUAL", "m": 4.0}).status_code == 422
+    r = c.post(f"/api/curves/{rid}/refit", json={"grid": "ROLLING", "k": 0, "vb": 11, "mode": "TWO_PARAM_FIXED_MU"})
+    assert r.status_code == 200 and r.json()["fit"]["status"] == "NOT_FITTABLE" and "fixed" in r.json()["fit"]["reason"].lower()
+    assert any("not fittable" in w for w in r.json()["summary"]["warnings"])
