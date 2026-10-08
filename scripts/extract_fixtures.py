@@ -63,6 +63,40 @@ CURVES_HEADER = (
     + tuple(f"lb_{vb}" for vb in VBS)
 )
 
+COHORT_TABLE_HEADER = (
+    "t", "obs", "keep", "used", "w", "z", "phi", "pred", "resid", "x_m", "x_s", "x_cn", "h3", "h2", "h",
+    "sqrt_term", "se_i", "half", "lower", "upper",
+)
+VAL_COHORT_TABLE_HEADER = (
+    "t", "obs", "pred_c", "w_d", "ln_t", "z_f", "pdf_g", "pred_h", "check_i", "resid_j", "wres_k", "used", "w",
+    "z", "phi", "pred", "resid", "x_m", "x_s", "x_cn", "h3", "h2", "h", "sqrt_term", "se_i", "half", "lower",
+    "upper",
+)
+MA_COLS = ("M0", "M1", "M2", "M3", "M4", "M5")
+
+
+def cohort_block_specs(vb: int, k: int) -> list[TableSpec | CellsSpec]:
+    """One rolling Cohort block: 24 columns starting at 1 + 24k (panel, t-table, pred to t = 120)."""
+    c0 = 1 + 24 * k
+    a, z = idx_to_col(c0), idx_to_col(c0 + 22)
+    sheet = f"Cohort_{vb}"
+    return [
+        CellsSpec(f"cohort_{vb}_k{k}_panel", sheet, 2, 22, a, z),
+        TableSpec(f"cohort_{vb}_k{k}_table", sheet, 20, a, idx_to_col(c0 + 19), last_row=80,
+                  header=COHORT_TABLE_HEADER),
+        TableSpec(f"cohort_{vb}_k{k}_pred120", sheet, 20, a, idx_to_col(c0 + 7), last_row=140,
+                  header=("t", "_o", "_k", "_u", "_w", "_z", "_phi", "pred")),
+    ]
+
+
+def _curves_k_header() -> tuple[str, ...]:
+    return ("t",) + tuple(f"{vb}_M{k}" for vb in VBS for k in range(8))
+
+
+def _curve350_header() -> tuple[str, ...]:
+    return ("t",) + tuple(f"{vb}_{c}" for vb in VBS for c in MA_COLS + ("MA6",))
+
+
 ACM_TABLES = [
     "ACM_Payments", "ACM_Payments_VB44_Excluded", "ACM_Master", "ACM_Snap_BookUniverse", "ACM_VB",
     "ACM_VB_Alloc", "ACM_CAEIR", "ACM_FLI", "ACM_Costs", "ACM_Costs_Cohorts", "ACM_Capping", "ACM_Config",
@@ -80,6 +114,9 @@ VALUATION_SPECS: list[TableSpec | CellsSpec] = [
     CellsSpec("calc_constants", "ACM_Payments_Calc", 2, 10, "BO", "BQ"),
     TableSpec("Curves", "Curves", 3, "A", "S", last_row=503, header=CURVES_HEADER),
     CellsSpec("Config_Claude", "Config_Claude", 1, 20, "A", "C"),
+    *[CellsSpec(f"cohort_{vb}_panel", f"Cohort_{vb}", 3, 26, "A", "AF") for vb in VBS],
+    *[TableSpec(f"cohort_{vb}_table", f"Cohort_{vb}", 17, "A", "AB", last_row=92, header=VAL_COHORT_TABLE_HEADER)
+      for vb in VBS],
 ]
 
 ROLLING_SPECS: list[TableSpec | CellsSpec] = [
@@ -98,6 +135,11 @@ ROLLING_SPECS: list[TableSpec | CellsSpec] = [
     ],
     TableSpec("Params", "Params", 4, "A", "T", last_row=52, header=PARAMS_HEADER),
     CellsSpec("Config", "Config", 3, 27, "A", "I"),
+    *[s for vb in VBS for k in range(8) for s in cohort_block_specs(vb, k)],
+    TableSpec("Curves_k", "Curves", 5, "A", "AW", last_row=125, header=_curves_k_header()),
+    TableSpec("Curves_MA6", "Curves_MA6", 5, "A", "AW", last_row=125, header=_curves_k_header()),
+    CellsSpec("Curve_MA6_350_params", "Curve_MA6_350", 6, 12, "A", "AQ"),
+    TableSpec("Curve_MA6_350", "Curve_MA6_350", 14, "A", "AQ", last_row=364, header=_curve350_header()),
 ]
 
 REGISTRY: dict[str, tuple[str, list[TableSpec | CellsSpec]]] = {
@@ -156,6 +198,32 @@ def extract_cells(xs: XlsxStream, spec: CellsSpec) -> pd.DataFrame:
     )
 
 
+class _CachedStream:
+    """Reads a sheet once when several specs target it (the Cohort sheets have 24 specs each)."""
+
+    def __init__(self, xs: XlsxStream, specs):
+        self.xs = xs
+        counts: dict[str, int] = {}
+        for s in specs:
+            counts[s.sheet] = counts.get(s.sheet, 0) + 1
+        self.cached_sheets = {sh for sh, n in counts.items() if n > 3}
+        self._rows: dict[str, list[tuple[int, dict[int, object]]]] = {}
+
+    def iter_rows(self, sheet, first_row=1, last_row=None, first_col=1, last_col=None):
+        if sheet not in self.cached_sheets:
+            yield from self.xs.iter_rows(sheet, first_row, last_row, first_col, last_col)
+            return
+        if sheet not in self._rows:
+            self._rows[sheet] = list(self.xs.iter_rows(sheet))
+        for r, cells in self._rows[sheet]:
+            if r < first_row:
+                continue
+            if last_row is not None and r > last_row:
+                break
+            sub = {c: v for c, v in cells.items() if c >= first_col and (last_col is None or c <= last_col)}
+            yield r, sub
+
+
 def _find_workbook(reference_dirs: list[Path], pattern: str) -> Path:
     for d in reference_dirs:
         hits = sorted(d.glob(pattern))
@@ -179,7 +247,7 @@ def extract_all(reference_dirs: list[Path], out_dir: Path, only: set[str] | None
         if only and key not in only:
             continue
         wb = _find_workbook(reference_dirs, pattern)
-        xs = XlsxStream(wb)
+        xs = _CachedStream(XlsxStream(wb), specs)
         entry = {"source": wb.name, "sha256": _sha256(wb), "tables": {}}
         (out_dir / key).mkdir(parents=True, exist_ok=True)
         for spec in specs:

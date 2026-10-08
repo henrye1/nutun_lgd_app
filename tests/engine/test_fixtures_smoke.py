@@ -44,3 +44,38 @@ def test_known_cells_survive_extraction(fixtures_dir, expected):
     assert params.loc[0, "K"] == 55
     info = pd.read_parquet(fixtures_dir / "valuation" / "Info.parquet")
     assert round(float(info["Cost"].sum()), 2) == expected["info_sum_cost"]
+
+
+def test_m2_fixture_tables_present(fixtures_dir):
+    m = json.loads((fixtures_dir / "manifest.json").read_text())
+    for key in ("rolling_2p", "rolling_3p"):
+        t = m[key]["tables"]
+        for vb in (11, 15, 22, 23, 25, 44):
+            for k in range(8):
+                assert t[f"cohort_{vb}_k{k}_table"]["rows"] == 60
+                assert t[f"cohort_{vb}_k{k}_pred120"]["rows"] == 120
+                assert t[f"cohort_{vb}_k{k}_panel"]["rows"] > 30
+        assert t["Curves_k"]["rows"] == 120 and t["Curves_MA6"]["rows"] == 120
+        assert t["Curve_MA6_350"]["rows"] == 350
+    v = m["valuation"]["tables"]
+    for vb in (11, 15, 22, 23, 25, 44):
+        assert v[f"cohort_{vb}_table"]["rows"] == 75 and v[f"cohort_{vb}_panel"]["rows"] > 20
+
+
+def test_m2_known_block_cells(fixtures_dir, expected):
+    tbl = pd.read_parquet(fixtures_dir / "rolling_2p" / "cohort_11_k0_table.parquet")
+    assert tbl.loc[0, "t"] == 1 and tbl.loc[0, "used"] == 1
+    assert tbl.loc[0, "pred"] == pytest.approx(expected["rolling_k0_vb11_2p"]["cn"] * tbl.loc[0, "phi"], rel=1e-12)
+    panel = pd.read_parquet(fixtures_dir / "rolling_2p" / "cohort_11_k0_panel.parquet").set_index(["row", "col"])
+    assert panel.loc[(3, "B"), "value_num"] == expected["rolling_k0_vb11_2p"]["mu"]
+    assert panel.loc[(11, "B"), "value_num"] == expected["rolling_k0_vb11_2p"]["sse"]
+    k1 = pd.read_parquet(fixtures_dir / "rolling_2p" / "cohort_11_k1_panel.parquet").set_index(["row", "col"])
+    assert k1.loc[(3, "Z"), "value_num"] == expected["rolling_k1_vb11_2p"]["mu"]
+    vp = pd.read_parquet(fixtures_dir / "valuation" / "cohort_11_panel.parquet").set_index(["row", "col"])
+    assert vp.loc[(4, "B"), "value_num"] == expected["valuation_cohort11"]["m"]
+    assert vp.loc[(13, "AF"), "value_num"] == expected["valuation_cohort11"]["W11"]
+    ma = pd.read_parquet(fixtures_dir / "rolling_2p" / "Curves_MA6.parquet")
+    assert float(ma.loc[0, "11_M0"]) == expected["ma6_2p_vb11_t1"]
+    c350 = pd.read_parquet(fixtures_dir / "rolling_2p" / "Curve_MA6_350.parquet")
+    assert c350.loc[0, "t"] == 1 and c350.loc[349, "t"] == 350
+    assert c350.loc[0, "11_MA6"] == pytest.approx(expected["ma6_2p_vb11_t1"], rel=1e-12)
