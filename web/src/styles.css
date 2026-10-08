@@ -11,3 +11,14 @@ main { padding: 24px; }
 tr.missing td { background: #fde2e1; color: #8a1c1c; }
 tr.warn td { background: #fff4d6; }
 p.ok { color: #1a7f37; } p.bad { color: #b42318; }
+
+.tabs { display: flex; gap: 4px; margin: 12px 0; border-bottom: 1px solid #ddd; }
+.tabs button { background: none; border: none; padding: 8px 14px; cursor: pointer; font: inherit; }
+.tabs button[aria-selected="true"] { font-weight: 600; border-bottom: 2px solid #15314b; }
+.badge { padding: 2px 8px; border-radius: 10px; background: #e5e7eb; }
+.badge.warn { background: #fde68a; }
+.runhead { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+.launcher label { display: block; margin: 6px 0; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: #eef3f8; }
+p.warn { color: #92400e; }
