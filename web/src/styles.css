@@ -32,3 +32,4 @@ table.matrix td { padding: 2px 8px; }
 .refit label { display: block; margin: 4px 0; }
 .note { color: #1f2937; font-size: 0.9em; }
 table.ttable { font-size: 0.85em; }
+.warnings { margin: 8px 0; } .warnings ul { margin: 4px 0 0 16px; font-size: 0.9em; }

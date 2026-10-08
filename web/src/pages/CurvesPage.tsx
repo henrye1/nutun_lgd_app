@@ -4,8 +4,11 @@ import { useSearchParams } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { getSummary, type FitMode, type RuleSet } from '../api/curves'
 import { BlockDetail } from '../components/BlockDetail'
+import { CurveCharts } from '../components/CurveCharts'
+import { CurveSetTable } from '../components/CurveSetTable'
 import { ParamsGrid } from '../components/ParamsGrid'
 import { RunLauncher } from '../components/RunLauncher'
+import { WarningsList } from '../components/WarningsList'
 import { YieldGrid } from '../components/YieldGrid'
 
 export type Tab = 'params' | 'grids' | 'block' | 'curves' | 'charts'
@@ -62,6 +65,7 @@ export function CurvesPage() {
           {nWarn} warning{nWarn === 1 ? '' : 's'}
         </span>
       </header>
+      <WarningsList warnings={s.warnings} />
       <nav role="tablist" className="tabs">
         {TABS.map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setSp({ run: s.run_id, tab: id })}>
@@ -80,8 +84,10 @@ export function CurvesPage() {
           ) : (
             <p>Pick a block on the Params tab.</p>
           ))}
-        {tab === 'curves' && <p>Curve set (Task 6)</p>}
-        {tab === 'charts' && <p>Charts (Task 6)</p>}
+        {tab === 'curves' && <CurveSetTable runId={s.run_id} cohorts={s.cohorts} />}
+        {tab === 'charts' && (
+          <CurveCharts runId={s.run_id} cohorts={s.cohorts} nMonths={s.n_months} maMembers={s.ma_members} maFitMode={s.ma_fit_mode} />
+        )}
       </div>
     </section>
   )
