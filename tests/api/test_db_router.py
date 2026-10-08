@@ -53,3 +53,15 @@ def test_db_objects_lists_every_required_object():
     assert rows["ACM_Payments"]["ok"] and rows["ACM_Payments"]["row_count"] == 3
     assert rows["ACM_Payments"]["modify_date"].startswith("2026-08-01")
     assert not rows["fn_APP_Info"]["ok"] and "fn_APP_Info.sql" in rows["fn_APP_Info"]["hint"]
+
+
+def test_db_info_returns_503_when_query_fails():
+    class BadEngine:
+        def connect(self):
+            raise RuntimeError("no driver")
+
+    from api.deps import get_engine
+
+    app.dependency_overrides[get_engine] = lambda: BadEngine()
+    r = _client().get("/api/db/info", params={"report_month": "2026-07-01"})
+    assert r.status_code == 503 and "Info query failed" in r.json()["detail"]
