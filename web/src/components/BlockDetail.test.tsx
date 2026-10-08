@@ -56,8 +56,8 @@ describe('BlockDetail', () => {
     mock()
     setup()
     expect(await screen.findByText('4.570000')).toBeInTheDocument() // m
-    expect(await screen.findByText('CONTIGUOUS_PREFIX')).toBeInTheDocument()
-    expect(screen.getByText('139.3000')).toBeInTheDocument() // h3
+    expect(await screen.findByText(/CONTIGUOUS_PREFIX/)).toBeInTheDocument()
+    expect(screen.getAllByText('139.3000')).toHaveLength(2) // h3 and h used
     expect(screen.getByText('m −1%')).toBeInTheDocument()
     expect(screen.getByText(/this block parameterises the VB11 bounds/i)).toBeInTheDocument()
   })

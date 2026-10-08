@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { getSummary, type FitMode, type RuleSet } from '../api/curves'
+import { BlockDetail } from '../components/BlockDetail'
 import { ParamsGrid } from '../components/ParamsGrid'
 import { RunLauncher } from '../components/RunLauncher'
 import { YieldGrid } from '../components/YieldGrid'
@@ -73,7 +74,12 @@ export function CurvesPage() {
           <ParamsGrid runId={s.run_id} onOpen={(grid, k, vb, mode) => openBlock({ grid, k, vb, mode })} />
         )}
         {tab === 'grids' && <YieldGrid runId={s.run_id} cohorts={s.cohorts} nMonths={s.n_months} />}
-        {tab === 'block' && <p>Block detail (Task 5){block ? ` — VB${block.vb} k=${block.k}` : ''}</p>}
+        {tab === 'block' &&
+          (block ? (
+            <BlockDetail runId={s.run_id} block={block} boundsFrom={s.bounds_params_from} onChanged={() => summary.refetch()} />
+          ) : (
+            <p>Pick a block on the Params tab.</p>
+          ))}
         {tab === 'curves' && <p>Curve set (Task 6)</p>}
         {tab === 'charts' && <p>Charts (Task 6)</p>}
       </div>

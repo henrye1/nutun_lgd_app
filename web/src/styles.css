@@ -26,3 +26,9 @@ td.dropped { background: #f3f4f6; color: #9ca3af; }
 .filters { display: flex; gap: 16px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
 fieldset.inline { display: inline-flex; gap: 12px; border: none; padding: 0; }
 table.params td, table.yields td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.panel-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+table.panel th { text-align: left; }
+table.matrix td { padding: 2px 8px; }
+.refit label { display: block; margin: 4px 0; }
+.note { color: #1f2937; font-size: 0.9em; }
+table.ttable { font-size: 0.85em; }
