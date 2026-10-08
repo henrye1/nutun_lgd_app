@@ -72,6 +72,7 @@ class CurvesSection(_Frozen):
 
 class FitSection(_Frozen):
     engine: Literal["LM_PORT", "SCIPY_TRF"] = "LM_PORT"
+    lifetime_horizon: int = 120  # Lifetime = Σ f(t), t = 1..120 (Cohort!B18)
     # the fixed starting points of modRollingFitLM (the warm start is prepended at run time)
     starts: list[tuple[float, float, float]] = [
         (4.0, 1.7, 0.3),
@@ -88,6 +89,7 @@ class BoundsSection(_Frozen):
     params_fit_mode: FitMode = "THREE_PARAM"
     params_k: int = 1
     points: Literal["KEPT", "CONTIGUOUS_PREFIX"] = "CONTIGUOUS_PREFIX"
+    p_rule: Literal["M_AT_BOUND_ONLY", "FIXED_MU_IS_2"] = "M_AT_BOUND_ONLY"  # Q14
 
 
 class ValuationSection(_Frozen):
@@ -157,6 +159,7 @@ class RunConfig(_Frozen):
             f"params={self.bounds.params_fit_mode}@k{self.bounds.params_k}",
             "Q13.vb_source": self.book.vb_source,
             "Q14.bounds_points": self.bounds.points,
+            "Q14.p_rule": self.bounds.p_rule,
             "Q16.offset_basis": self.curves.offset_basis,
             "Q17.r2_zero": self.fli.r2_zero,
             "Q18.age_basis": self.valuation.age_basis,
@@ -188,7 +191,8 @@ def corrected() -> RunConfig:
             ),
             "curves": base.curves.model_copy(update={"t_max": 600}),
             "bounds": BoundsSection(
-                data_rule_set="ROLLING", data_k=0, params_fit_mode="THREE_PARAM", params_k=0, points="KEPT"
+                data_rule_set="ROLLING", data_k=0, params_fit_mode="THREE_PARAM", params_k=0, points="KEPT",
+                p_rule="FIXED_MU_IS_2",
             ),
             "valuation": base.valuation.model_copy(update={"month_offset": 0, "bound_age": None}),
             "capping": CappingSection(ac_capped_display="ONLY_WHEN_APPLIES"),

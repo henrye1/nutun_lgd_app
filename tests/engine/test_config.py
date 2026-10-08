@@ -27,7 +27,8 @@ def test_parity_preset_matches_spec_section_8():
     assert c.fit.engine == "LM_PORT" and c.fit.starts[0] == (4.0, 1.7, 0.3) and len(c.fit.starts) == 5
     assert c.bounds.data_rule_set == "VALUATION_CALC" and c.bounds.data_k == 0
     assert c.bounds.params_fit_mode == "THREE_PARAM" and c.bounds.params_k == 1
-    assert c.bounds.points == "CONTIGUOUS_PREFIX"
+    assert c.bounds.points == "CONTIGUOUS_PREFIX" and c.bounds.p_rule == "M_AT_BOUND_ONLY"
+    assert c.fit.lifetime_horizon == 120
     v = c.valuation
     assert v.horizon == 120 and v.disc_time == 0.43 and v.age_capping == 12 and v.bound_age == 12
     assert v.delta_window == 36 and v.delta_floor == 0.10 and v.month_offset == -2
@@ -45,6 +46,7 @@ def test_corrected_preset_differs_only_where_spec_says():
     assert c.valuation.month_offset == 0 and c.fli.missing_fwd_month == "ONE_AND_WARN"
     assert c.valuation.bound_age is None  # None = AgeCapping
     assert c.bounds.params_k == 0 and c.bounds.data_rule_set == "ROLLING" and c.bounds.points == "KEPT"
+    assert c.bounds.p_rule == "FIXED_MU_IS_2"
     assert c.forecast.cohort_costs is True and c.curves.t_max == 600
     assert c.capping.ac_capped_display == "ONLY_WHEN_APPLIES"
     assert c.fli.missing_hist_month_rolling == "ONE"
