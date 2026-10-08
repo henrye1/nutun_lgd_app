@@ -124,6 +124,12 @@ def test_refit_bad_block_and_manual_without_params(fixtures_dir):
     ).json()["run_id"]
     assert c.post(f"/api/curves/{rid}/refit", json={"grid": "ROLLING", "k": 12, "vb": 11, "mode": "THREE_PARAM"}).status_code == 422
     assert c.post(f"/api/curves/{rid}/refit", json={"grid": "ROLLING", "k": 0, "vb": 11, "mode": "MANUAL", "m": 4.0}).status_code == 422
+    # no mu in the request → the fixed-mu table's value for (k, VB) is used
     r = c.post(f"/api/curves/{rid}/refit", json={"grid": "ROLLING", "k": 0, "vb": 11, "mode": "TWO_PARAM_FIXED_MU"})
-    assert r.status_code == 200 and r.json()["fit"]["status"] == "NOT_FITTABLE" and "fixed" in r.json()["fit"]["reason"].lower()
-    assert any("not fittable" in w for w in r.json()["summary"]["warnings"])
+    from nutun_engine.config import parity_jul26
+
+    assert r.status_code == 200 and r.json()["fit"]["status"] == "OK"
+    assert r.json()["fit"]["m"] == parity_jul26().fixed_mu_lookup()[(0, 11)]
+    # MANUAL with a non-positive shape or scale is refused
+    r = c.post(f"/api/curves/{rid}/refit", json={"grid": "ROLLING", "k": 0, "vb": 11, "mode": "MANUAL", "m": 4.0, "s": 0.0, "cn": 0.2})
+    assert r.status_code == 422 and "s" in r.json()["detail"]

@@ -204,6 +204,8 @@ def refit_block(
         g = run.grid_calc
     c = g.column(vb)
     keep = g.keep[:, c]
+    if mode == "TWO_PARAM_FIXED_MU" and mu is None and grid == "ROLLING":
+        mu = cfg.fixed_mu_lookup().get((k, vb))  # the run's own table; NOT_FITTABLE when it has no entry
     if grid == "VALUATION_CALC" and cfg.bounds.sse_t_max and cfg.bounds.sse_t_max.get(vb) is not None:
         keep = keep & (g.t <= cfg.bounds.sse_t_max[vb])  # Q22: the sheet's truncated objective
     t0 = time.perf_counter()

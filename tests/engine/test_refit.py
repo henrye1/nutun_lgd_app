@@ -55,8 +55,16 @@ def test_refit_calc_grid_block_updates_bounds(base_run):
     assert 11 in run3b.bounds and run3b.bounds_params_from[11] == "VALUATION_CALC MANUAL"
 
 
+def test_refit_fixed_mu_without_mu_uses_the_table(base_run):
+    ok = refit_block(base_run, grid="ROLLING", k=0, vb=11, mode="TWO_PARAM_FIXED_MU", mu=None)
+    f = ok.fits[("TWO_PARAM_FIXED_MU", 0, 11)]
+    assert f.status == "OK" and f.m == base_run.cfg.fixed_mu_lookup()[(0, 11)]
+
+
 def test_refit_not_fittable_and_bad_keys(base_run):
-    nf = refit_block(base_run, grid="ROLLING", k=0, vb=11, mode="TWO_PARAM_FIXED_MU", mu=None)
+    cfg_nomu = base_run.cfg.model_copy(update={"curves": base_run.cfg.curves.model_copy(update={"fixed_mu": []})})
+    run_nomu = run_curves(_portfolio(), cfg_nomu, D, modes=("THREE_PARAM",))
+    nf = refit_block(run_nomu, grid="ROLLING", k=0, vb=11, mode="TWO_PARAM_FIXED_MU", mu=None)
     assert nf.fits[("TWO_PARAM_FIXED_MU", 0, 11)].status == "NOT_FITTABLE"
     nf2 = refit_block(base_run, grid="ROLLING", k=0, vb=11, mode="MANUAL", manual=None)
     assert nf2.fits[("MANUAL", 0, 11)].status == "NOT_FITTABLE"

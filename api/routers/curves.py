@@ -129,6 +129,10 @@ def refit(run_id: str, req: RefitRequest) -> dict:
     if req.mode == "MANUAL":
         if req.m is None or req.s is None or req.cn is None:
             raise HTTPException(status_code=422, detail="MANUAL mode needs m, s and cn")
+        import math
+
+        if not all(math.isfinite(v) for v in (req.m, req.s, req.cn)) or req.s <= 1e-4 or req.cn <= 1e-9:
+            raise HTTPException(status_code=422, detail="MANUAL mode needs finite m, s > 1e-4 and cn > 1e-9")
         manual = (req.m, req.s, req.cn)
     try:
         new = refit_block(run, grid=req.grid, k=req.k, vb=req.vb, mode=req.mode, mu=req.mu, manual=manual)

@@ -30,6 +30,7 @@ function mock() {
         bodies.push(JSON.parse(String(init.body)))
         return json({ fit: { ...fit, mode: 'MANUAL', status: 'MANUAL', m: 4 }, summary })
       }
+      if (url.includes('/fit/MANUAL/')) return json({ ...fit, mode: 'MANUAL', status: 'MANUAL', m: 4 })
       if (url.includes('/fit/')) return json(fit)
       if (url.includes('/bounds/')) return json(bounds)
       if (url.includes('/summary')) return json(summary)
@@ -45,7 +46,13 @@ function setup(block = { grid: 'ROLLING' as const, k: 1, vb: 11, mode: 'THREE_PA
   const onChanged = vi.fn()
   render(
     <QueryClientProvider client={qc}>
-      <BlockDetail runId="abc" block={block} boundsFrom={{ '11': 'override ROLLING THREE_PARAM k=1' }} onChanged={onChanged} />
+      <BlockDetail
+        runId="abc"
+        block={block}
+        boundsFrom={{ '11': 'override ROLLING THREE_PARAM k=1' }}
+        maFitMode="TWO_PARAM_FIXED_MU"
+        onChanged={onChanged}
+      />
     </QueryClientProvider>,
   )
   return onChanged
@@ -76,6 +83,25 @@ describe('BlockDetail', () => {
     await userEvent.click(screen.getByRole('button', { name: /fit block/i }))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
     expect(bodies[0]).toMatchObject({ grid: 'ROLLING', k: 1, vb: 11, mode: 'MANUAL', m: 4, s: 1.5, cn: 0.2 })
+    // the Block view now shows the refit result, not the original fit
+    expect(await screen.findByText('MANUAL', { selector: 'td' })).toBeInTheDocument()
+    expect(screen.getByText('4.000000')).toBeInTheDocument()
+    expect(onChanged).toHaveBeenCalledWith(expect.anything(), { grid: 'ROLLING', k: 1, vb: 11, mode: 'MANUAL' })
+    expect(screen.getByText(/valuation curve uses TWO_PARAM_FIXED_MU/i)).toBeInTheDocument()
+  })
+
+  it('disables Fit block while MANUAL inputs are blank or non-positive', async () => {
+    mock()
+    setup()
+    await screen.findByText('4.570000')
+    await userEvent.selectOptions(screen.getByLabelText(/^mode$/i), 'MANUAL')
+    await userEvent.clear(screen.getByLabelText(/^s$/i))
+    expect(screen.getByRole('button', { name: /fit block/i })).toBeDisabled()
+    await userEvent.type(screen.getByLabelText(/^s$/i), '0')
+    expect(screen.getByRole('button', { name: /fit block/i })).toBeDisabled()
+    await userEvent.clear(screen.getByLabelText(/^s$/i))
+    await userEvent.type(screen.getByLabelText(/^s$/i), '1.2')
+    expect(screen.getByRole('button', { name: /fit block/i })).toBeEnabled()
   })
 
   it('shows the reason for a NOT_FITTABLE block and the grid observations', async () => {

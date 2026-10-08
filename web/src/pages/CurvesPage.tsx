@@ -80,7 +80,13 @@ export function CurvesPage() {
         {tab === 'grids' && <YieldGrid runId={s.run_id} cohorts={s.cohorts} nMonths={s.n_months} />}
         {tab === 'block' &&
           (block ? (
-            <BlockDetail runId={s.run_id} block={block} boundsFrom={s.bounds_params_from} onChanged={() => summary.refetch()} />
+            <BlockDetail
+              runId={s.run_id}
+              block={block}
+              boundsFrom={s.bounds_params_from}
+              maFitMode={s.ma_fit_mode}
+              onChanged={(_, next) => setBlock(next)}
+            />
           ) : (
             <p>Pick a block on the Params tab.</p>
           ))}

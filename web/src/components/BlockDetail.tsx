@@ -55,16 +55,21 @@ function Matrix({ title, m }: { title: string; m: number[][] }) {
 
 export function BlockDetail({
   runId,
-  block,
+  block: blockProp,
   boundsFrom,
+  maFitMode,
   onChanged,
 }: {
   runId: string
   block: BlockRef
   boundsFrom: Record<string, string>
-  onChanged: (s: RunSummary) => void
+  maFitMode: FitMode
+  onChanged: (s: RunSummary, block: BlockRef) => void
 }) {
   const qc = useQueryClient()
+  // the block being shown; after a refit it follows the new mode so the result is what the panel shows
+  const [block, setBlockState] = useState<BlockRef>(blockProp)
+  useEffect(() => setBlockState(blockProp), [blockProp])
   const fitQ = useQuery({ queryKey: ['fit', runId, block], queryFn: () => getFit(runId, block.mode, block.k, block.vb, block.grid) })
   const from = boundsFrom[String(block.vb)] ?? ''
   const feedsBounds = from.includes(block.grid === 'ROLLING' ? `ROLLING ${block.mode} k=${block.k}` : `VALUATION_CALC ${block.mode}`)
@@ -100,21 +105,26 @@ export function BlockDetail({
         k: block.k,
         vb: block.vb,
         mode: nextMode,
-        mu: nextMode === 'TWO_PARAM_FIXED_MU' && mu !== '' ? Number(mu) : null,
+        mu: nextMode === 'TWO_PARAM_FIXED_MU' && mu.trim() !== '' ? Number(mu) : null, // null → the run's μ table
         m: nextMode === 'MANUAL' ? Number(m) : null,
         s: nextMode === 'MANUAL' ? Number(s) : null,
         cn: nextMode === 'MANUAL' ? Number(cn) : null,
       }),
     onSuccess: (res) => {
-      for (const key of ['params', 'curves', 'bounds', 'summary', 'fit']) qc.invalidateQueries({ queryKey: [key, runId] })
-      qc.setQueryData(['fit', runId, { ...block, mode: res.fit.mode }], res.fit)
-      onChanged(res.summary)
+      const next: BlockRef = { ...block, mode: res.fit.mode }
+      for (const key of ['params', 'curves', 'bounds', 'summary']) qc.invalidateQueries({ queryKey: [key, runId] })
+      qc.setQueryData(['fit', runId, next], res.fit)
+      setBlockState(next)
+      onChanged(res.summary, next)
     },
   })
   const f = fitQ.data
   const err = doRefit.error as ApiError | null
+  const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
+  const manualOk = Number.isFinite(num(m)) && num(s) > 1e-4 && num(cn) > 1e-9
+  const canFit = mode !== 'MANUAL' || manualOk
   const b = boundsQ.data
-  const title = `VB${block.vb} · ${block.grid === 'ROLLING' ? `k = ${block.k}` : 'VALUATION_CALC'} · ${f?.mode ?? block.mode}`
+  const title = `VB${block.vb} · ${block.grid === 'ROLLING' ? `k = ${block.k}` : 'VALUATION_CALC'} · ${block.mode}`
   const panel: Array<[string, string]> = f
     ? [
         ['m (location)', fmtNum(f.m, 6)], ['s (shape)', fmtNum(f.s, 6)], ['cn (scale)', fmtNum(f.cn, 6)], ['mbound', String(f.mbound)],
@@ -175,14 +185,15 @@ export function BlockDetail({
                 </label>
               </>
             )}
-            <button type="submit" disabled={doRefit.isPending}>
+            <button type="submit" disabled={doRefit.isPending || !canFit}>
               Fit block
             </button>
             <button
               type="button"
               onClick={() => {
-                setMode(block.mode)
-                doRefit.mutate(block.mode)
+                setMode(blockProp.mode)
+                setMu('')
+                doRefit.mutate(blockProp.mode)
               }}
               disabled={doRefit.isPending}
             >
@@ -190,6 +201,10 @@ export function BlockDetail({
             </button>
             {err && <p className="bad">{err.detail ?? String(err)}</p>}
             {feedsBounds && <p className="note">This block parameterises the VB{block.vb} bounds ({from}).</p>}
+            <p className="note">
+              The valuation curve uses {maFitMode} fits; a refit in another mode adds a parallel fit (see the Params
+              tab) and does not move the curve or the bounds unless that mode is the one the run reads.
+            </p>
           </form>
         </div>
       )}
