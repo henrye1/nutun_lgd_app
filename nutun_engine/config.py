@@ -88,6 +88,13 @@ class BoundsSection(_Frozen):
     data_k: int = 0
     params_fit_mode: FitMode = "THREE_PARAM"
     params_k: int = 1
+    # Where the bound-curve parameters come from (finding 2026-10-08, supersedes §9 Q9 for 5 of 6 VBs):
+    #   VALUATION_CALC_FIT = fit the VALUATION_CALC grid itself (the valuation Cohort sheets own Solver fits);
+    #   ROLLING_FIT = the rolling fit at (params_fit_mode, params_k); MANUAL = manual_params per VB.
+    # params_vb_override sends single VBs elsewhere: the VB11 valuation params are the rolling k=1 3P fit.
+    params_source: Literal["VALUATION_CALC_FIT", "ROLLING_FIT", "MANUAL"] = "VALUATION_CALC_FIT"
+    params_vb_override: dict[int, tuple[Literal["ROLLING", "VALUATION_CALC"], int]] = {11: ("ROLLING", 1)}
+    manual_params: dict[int, tuple[float, float, float]] | None = None
     points: Literal["KEPT", "CONTIGUOUS_PREFIX"] = "CONTIGUOUS_PREFIX"
     p_rule: Literal["M_AT_BOUND_ONLY", "FIXED_MU_IS_2"] = "M_AT_BOUND_ONLY"  # Q14
     q12_vb15_blank_from_vb11: bool = True  # Q12: Curves!I5:I503 tests Cohort_11 for the VB15 upper bound
@@ -162,7 +169,8 @@ class RunConfig(_Frozen):
             "Q6.ac_capped_display": self.capping.ac_capped_display,
             "Q8.forecast_cohort_costs": str(self.forecast.cohort_costs),
             "Q9.bounds": f"data={self.bounds.data_rule_set}@k{self.bounds.data_k},"
-            f"params={self.bounds.params_fit_mode}@k{self.bounds.params_k}",
+            f"params={self.bounds.params_source}:{self.bounds.params_fit_mode}@k{self.bounds.params_k},"
+            f"override={self.bounds.params_vb_override}",
             "Q13.vb_source": self.book.vb_source,
             "Q14.bounds_points": self.bounds.points,
             "Q14.p_rule": self.bounds.p_rule,
@@ -200,6 +208,7 @@ def corrected() -> RunConfig:
             "curves": base.curves.model_copy(update={"t_max": 600}),
             "bounds": BoundsSection(
                 data_rule_set="ROLLING", data_k=0, params_fit_mode="THREE_PARAM", params_k=0, points="KEPT",
+                params_source="ROLLING_FIT", params_vb_override={},
                 p_rule="FIXED_MU_IS_2", q12_vb15_blank_from_vb11=False, matrix_t_max=None, sensitivity_t_max=None, sse_t_max=None,
             ),
             "valuation": base.valuation.model_copy(update={"month_offset": 0, "bound_age": None}),

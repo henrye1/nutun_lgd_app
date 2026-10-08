@@ -28,6 +28,7 @@ def test_parity_preset_matches_spec_section_8():
     assert c.bounds.data_rule_set == "VALUATION_CALC" and c.bounds.data_k == 0
     assert c.bounds.params_fit_mode == "THREE_PARAM" and c.bounds.params_k == 1
     assert c.bounds.points == "CONTIGUOUS_PREFIX" and c.bounds.p_rule == "M_AT_BOUND_ONLY"
+    assert c.bounds.params_source == "VALUATION_CALC_FIT" and c.bounds.params_vb_override == {11: ("ROLLING", 1)}
     assert c.fit.lifetime_horizon == 120 and c.bounds.q12_vb15_blank_from_vb11 is True
     assert c.bounds.matrix_t_max == {11: 61, 15: 53, 22: 55, 23: 48, 25: 48, 44: 48}
     assert c.bounds.sensitivity_t_max == {11: 61, 15: 53, 22: 55, 23: 43, 25: 26, 44: 48}
@@ -50,6 +51,7 @@ def test_corrected_preset_differs_only_where_spec_says():
     assert c.valuation.bound_age is None  # None = AgeCapping
     assert c.bounds.params_k == 0 and c.bounds.data_rule_set == "ROLLING" and c.bounds.points == "KEPT"
     assert c.bounds.p_rule == "FIXED_MU_IS_2" and c.bounds.q12_vb15_blank_from_vb11 is False
+    assert c.bounds.params_source == "ROLLING_FIT" and c.bounds.params_vb_override == {}
     assert c.bounds.matrix_t_max is None and c.bounds.sensitivity_t_max is None and c.bounds.sse_t_max is None
     assert c.forecast.cohort_costs is True and c.curves.t_max == 600
     assert c.capping.ac_capped_display == "ONLY_WHEN_APPLIES"
