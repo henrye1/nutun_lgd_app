@@ -12,3 +12,7 @@ tests/fixtures/private/
 *.xlsm
 web/node_modules/
 web/dist/
+# Client-specific documents never go to git (spec Appendix D carries client figures)
+/Nutun_AC_Valuation_App_Specification.md
+/docs/superpowers/
+/*.txt

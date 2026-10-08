@@ -7,12 +7,12 @@ from nutun_engine.inputs import load_inputs_from_fixtures
 pytestmark = pytest.mark.tieout
 
 
-def test_t1_info_tab_totals_and_agreement_with_acm_vb_and_caeir(fixtures_dir):
+def test_t1_info_tab_totals_and_agreement_with_acm_vb_and_caeir(fixtures_dir, expected):
     inp = load_inputs_from_fixtures(fixtures_dir)
     s = info_summary(inp.info)
-    assert s["rows"] == 539
-    assert round(s["sum_cost"], 2) == 8507208539.81
-    assert s["pp_weighted_caeir"] == pytest.approx(0.2036773, abs=5e-8)
+    assert s["rows"] == expected["info_rows"]
+    assert round(s["sum_cost"], 2) == expected["info_sum_cost"]
+    assert s["pp_weighted_caeir"] == pytest.approx(expected["info_pp_weighted_caeir"], abs=5e-8)
     m = inp.info.merge(inp.vb, on="wClientCode", how="outer", suffixes=("", "_vb"), indicator=True)
     assert (m["_merge"] == "both").all() and len(m) == 539
     np.testing.assert_array_equal(m.VB.to_numpy(), m.VB_vb.to_numpy())

@@ -10,12 +10,12 @@ from api.settings import Settings
 pytestmark = [pytest.mark.db, pytest.mark.tieout]
 
 
-def test_t1_fn_app_info_matches_info_tab_fixture(fixtures_dir):
+def test_t1_fn_app_info_matches_info_tab_fixture(fixtures_dir, expected):
     engine = make_client_engine(Settings())
     live = fetch_info(engine, date(2026, 7, 1))
     s = info_summary(live)
-    assert s["rows"] == 539 and round(s["sum_cost"], 2) == 8507208539.81
-    assert s["pp_weighted_caeir"] == pytest.approx(0.2036773, abs=5e-8)
+    assert s["rows"] == expected["info_rows"] and round(s["sum_cost"], 2) == expected["info_sum_cost"]
+    assert s["pp_weighted_caeir"] == pytest.approx(expected["info_pp_weighted_caeir"], abs=5e-8)
     fx = pd.read_parquet(fixtures_dir / "valuation" / "Info.parquet")
     fx["wClientCode"] = fx.wClientCode.astype("int64")
     m = live[["wClientCode", "VB", "Age", "CAEIR", "Cost"]].merge(fx, on="wClientCode", suffixes=("", "_wb"))

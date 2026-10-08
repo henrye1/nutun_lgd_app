@@ -31,16 +31,16 @@ def test_manifest_row_counts(fixtures_dir):
             assert r[f"Yields_M{k}"]["rows"] == 60
 
 
-def test_known_cells_survive_extraction(fixtures_dir):
+def test_known_cells_survive_extraction(fixtures_dir, expected):
     grid = pd.read_parquet(fixtures_dir / "valuation" / "calc_grid.parquet")
     assert grid.loc[0, "t"] == 1
-    assert grid.loc[0, "pay_11"] == 5577076.2510529701
+    assert grid.loc[0, "pay_11"] == expected["calc_grid_pay_11_t1"]
     assert grid.loc[0, "nho_11"] == 24
     assert grid.loc[0, "keep_11"] == "KEPT"
     y0 = pd.read_parquet(fixtures_dir / "rolling_2p" / "Yields_M0.parquet")
-    assert y0.loc[0, "bal_11"] == 7465357592.2900019  # the sheet's cached value (spec prints it rounded)
+    assert y0.loc[0, "bal_11"] == expected["calc_grid_bal_11_t1"]  # the sheet's cached value, not the rounded one
     params = pd.read_parquet(fixtures_dir / "rolling_2p" / "Params.parquet")
     assert params.loc[0, "m"] == pytest.approx(4.715979, abs=1e-9)
     assert params.loc[0, "K"] == 55
     info = pd.read_parquet(fixtures_dir / "valuation" / "Info.parquet")
-    assert round(float(info["Cost"].sum()), 2) == 8507208539.81
+    assert round(float(info["Cost"].sum()), 2) == expected["info_sum_cost"]

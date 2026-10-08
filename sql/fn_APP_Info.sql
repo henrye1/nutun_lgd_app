@@ -120,7 +120,7 @@ SELECT Check_          = 'Info rows (expect 539)',
        Value_          = COUNT(*)
 FROM dbo.fn_APP_Info('2026-07-01', NULL) WHERE HasInfoRow = 1
 UNION ALL
-SELECT 'Sum Cost (expect 8,507,208,539.81)', CAST(SUM(Cost) AS DECIMAL(20,2))
+SELECT 'Sum Cost (compare with the Info tab total)', CAST(SUM(Cost) AS DECIMAL(20,2))
 FROM dbo.fn_APP_Info('2026-07-01', NULL) WHERE HasInfoRow = 1
 UNION ALL
 SELECT 'Books with duplicate PBD_info rows (expect 0)', SUM(CASE WHEN InfoDuplicateRows > 0 THEN 1 ELSE 0 END)

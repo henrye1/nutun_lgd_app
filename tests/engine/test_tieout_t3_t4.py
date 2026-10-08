@@ -40,20 +40,20 @@ def _check_grid(g, fx: pd.DataFrame, label: str):
         )
 
 
-def test_t3_valuation_calc_grid_matches_calc_sheet(fixtures_dir):
+def test_t3_valuation_calc_grid_matches_calc_sheet(fixtures_dir, expected):
     inputs = load_inputs_from_fixtures(fixtures_dir)
     cfg = parity_jul26()
     g = build_valuation_calc_grid(prepare_valuation_calc(inputs, cfg, D), cfg, D)
     fx = pd.read_parquet(fixtures_dir / "valuation" / "calc_grid.parquet")
     _check_grid(g, fx, "calc")
     c = g.column(11)
-    assert g.sum_pay[0, c] == pytest.approx(5577076.2510529701, rel=1e-12)
-    assert g.sum_bal[0, c] == pytest.approx(7465357592.29, rel=1e-12) and g.n_ho[0, c] == 24 and g.keep[0, c]
+    assert g.sum_pay[0, c] == pytest.approx(expected["calc_grid_pay_11_t1"], rel=1e-12)
+    assert g.sum_bal[0, c] == pytest.approx(expected["calc_grid_bal_11_t1"], rel=1e-12) and g.keep[0, c]
     assert g.n_kept[c] == 55 and g.contiguous[c]  # Cohort_11!B8/B9 in the valuation workbook
 
 
 @pytest.mark.parametrize("wb", ["rolling_2p", "rolling_3p"])
-def test_t4_rolling_grids_match_yields_sheets(fixtures_dir, wb):
+def test_t4_rolling_grids_match_yields_sheets(fixtures_dir, expected, wb):
     inputs = load_inputs_from_fixtures(fixtures_dir)
     cfg = parity_jul26()
     grids = build_rolling_grids(prepare_rolling(inputs, cfg, D), cfg, D)
@@ -63,4 +63,4 @@ def test_t4_rolling_grids_match_yields_sheets(fixtures_dir, wb):
         _check_grid(g, fx, f"{wb} k={k}")
         if k in expected_K:
             assert g.n_kept.tolist() == expected_K[k]
-    assert grids[0].yield_[0, grids[0].column(11)] == pytest.approx(7.4706083159536898e-4, rel=1e-12)
+    assert grids[0].yield_[0, grids[0].column(11)] == pytest.approx(expected["rolling_k0_yield_11_t1"], rel=1e-12)

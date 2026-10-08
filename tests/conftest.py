@@ -28,6 +28,14 @@ def fixtures_dir() -> Path:
     return PRIVATE_FIXTURES
 
 
+@pytest.fixture(scope="session")
+def expected(fixtures_dir) -> dict:
+    """Workbook expected values (client figures) — kept out of git in the private fixture dir."""
+    import json
+
+    return json.loads((fixtures_dir / "expected_jul26.json").read_text())
+
+
 def pytest_collection_modifyitems(config, items):
     if not os.environ.get("NUTUN_DB_SERVER"):
         skip_db = pytest.mark.skip(reason="NUTUN_DB_SERVER not set; live DB tests skipped")

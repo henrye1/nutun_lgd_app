@@ -18,4 +18,4 @@ def test_sql_file_creates_only_the_info_function():
 def test_sql_file_checks_block_expects_539_rows():
     text = SQL.read_text(encoding="utf-8")
     assert "Info rows (expect 539)" in text
-    assert "8,507,208,539.81" in text
+    assert "Sum Cost (compare with the Info tab total)" in text  # no client figure in the committed SQL
