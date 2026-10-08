@@ -3,7 +3,9 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { getSummary, type FitMode, type RuleSet } from '../api/curves'
+import { ParamsGrid } from '../components/ParamsGrid'
 import { RunLauncher } from '../components/RunLauncher'
+import { YieldGrid } from '../components/YieldGrid'
 
 export type Tab = 'params' | 'grids' | 'block' | 'curves' | 'charts'
 export interface BlockRef {
@@ -47,7 +49,6 @@ export function CurvesPage() {
     setBlock(b)
     setSp({ run: s.run_id, tab: 'block' })
   }
-  void openBlock
   return (
     <section>
       <header className="runhead">
@@ -68,8 +69,10 @@ export function CurvesPage() {
         ))}
       </nav>
       <div role="tabpanel">
-        {tab === 'params' && <p>Params grid (Task 4)</p>}
-        {tab === 'grids' && <p>Yield grids (Task 4)</p>}
+        {tab === 'params' && (
+          <ParamsGrid runId={s.run_id} onOpen={(grid, k, vb, mode) => openBlock({ grid, k, vb, mode })} />
+        )}
+        {tab === 'grids' && <YieldGrid runId={s.run_id} cohorts={s.cohorts} nMonths={s.n_months} />}
         {tab === 'block' && <p>Block detail (Task 5){block ? ` — VB${block.vb} k=${block.k}` : ''}</p>}
         {tab === 'curves' && <p>Curve set (Task 6)</p>}
         {tab === 'charts' && <p>Charts (Task 6)</p>}

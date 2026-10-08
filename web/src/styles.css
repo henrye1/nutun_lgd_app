@@ -22,3 +22,7 @@ p.ok { color: #1a7f37; } p.bad { color: #b42318; }
 tr.clickable { cursor: pointer; }
 tr.clickable:hover td { background: #eef3f8; }
 p.warn { color: #92400e; }
+td.dropped { background: #f3f4f6; color: #9ca3af; }
+.filters { display: flex; gap: 16px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+fieldset.inline { display: inline-flex; gap: 12px; border: none; padding: 0; }
+table.params td, table.yields td { white-space: nowrap; font-variant-numeric: tabular-nums; }
