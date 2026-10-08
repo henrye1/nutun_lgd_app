@@ -5,9 +5,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .superpowers/
-data/
-reference/
-exports/
+/data/
+/reference/
+/exports/
 tests/fixtures/private/
 *.xlsm
 web/node_modules/
