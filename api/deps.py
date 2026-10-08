@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy import Engine
 
 from api.catalog import Catalog, SqlServerCatalog
@@ -20,6 +20,8 @@ def get_settings() -> Settings:
 
 
 def get_engine(settings: Settings = Depends(get_settings)) -> Engine:
+    if not settings.client_db_configured():
+        raise HTTPException(status_code=503, detail="NUTUN_DB_SERVER is not set; copy .env.example to .env")
     return make_client_engine(settings)
 
 

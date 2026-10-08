@@ -16,7 +16,7 @@ Spec: `Nutun_AC_Valuation_App_Specification.md`.
 See spec §3.3. `nutun_engine/` is the calculation engine (no I/O); `api/` is FastAPI; `web/` is the React front end.
 
 ## Run
-`start.bat` builds the front end once, starts the API on http://127.0.0.1:8000 and opens the Data page.
+`start.bat` builds the front end once, starts the API on http://127.0.0.1:8000 and opens the Data page. If port 8000 is taken, set `NUTUN_PORT=8765` in `.env` (or in the shell) and the script uses that.
 For development: `uv run --env-file .env uvicorn api.main:app --reload` and, in `web/`, `npm run dev` (proxies `/api`).
 
 ## Tests

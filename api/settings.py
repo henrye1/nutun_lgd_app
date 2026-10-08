@@ -23,6 +23,8 @@ class Settings(BaseSettings):
         return bool(self.db_server and self.db_name)
 
     def odbc_connect_string(self) -> str:
+        if not self.client_db_configured():  # an empty SERVER= would mean "(local)" to the ODBC driver
+            raise ValueError("NUTUN_DB_SERVER and NUTUN_DB_NAME must be set (see .env.example)")
         parts = [
             f"DRIVER={{{self.db_driver}}}",
             f"SERVER={self.db_server}",

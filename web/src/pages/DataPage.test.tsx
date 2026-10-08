@@ -71,6 +71,12 @@ describe('DataPage', () => {
     expect(screen.getByText('55,358')).toBeInTheDocument()
   })
 
+  it('shows the objects error instead of a blank table when the check fails', async () => {
+    mockFetch({ '/api/db/status': status })  // /api/db/objects → 404
+    renderPage()
+    expect(await screen.findByText(/HTTP 404/)).toBeInTheDocument()
+  })
+
   it('shows the error when the database is unreachable', async () => {
     mockFetch({
       '/api/db/status': { ...status, reachable: false, error: 'OperationalError: login timeout' },

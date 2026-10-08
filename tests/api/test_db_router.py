@@ -65,3 +65,38 @@ def test_db_info_returns_503_when_query_fails():
     app.dependency_overrides[get_engine] = lambda: BadEngine()
     r = _client().get("/api/db/info", params={"report_month": "2026-07-01"})
     assert r.status_code == 503 and "Info query failed" in r.json()["detail"]
+
+
+def test_db_objects_unconfigured_returns_503_not_local_instance(monkeypatch):
+    monkeypatch.delenv("NUTUN_DB_SERVER", raising=False)
+    r = _client(settings=Settings(_env_file=None)).get("/api/db/objects")
+    assert r.status_code == 503 and "NUTUN_DB_SERVER" in r.json()["detail"]
+
+
+def test_db_objects_unreachable_returns_statuses_with_hint():
+    class DownCatalog:
+        def object_info(self, name):
+            raise RuntimeError("login timeout")
+
+        def row_count(self, name, kind):
+            raise RuntimeError("login timeout")
+
+    r = _client(catalog=DownCatalog()).get("/api/db/objects")
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == len(REQUIRED_OBJECTS)
+    assert all(not x["ok"] and not x["exists"] and "cannot check" in x["hint"] and "login timeout" in x["hint"] for x in rows)
+
+
+def test_spa_route_never_serves_files_outside_dist():
+    import pytest
+
+    from api.main import DIST
+
+    if not DIST.exists():
+        pytest.skip("web/dist not built")
+    c = _client()
+    r = c.get("/..%2F..%2F.env.example")
+    assert r.status_code == 200 and "NUTUN_DB_SERVER" not in r.text and "<div id=\"root\">" in r.text
+    r2 = c.get("/../../pyproject.toml")
+    assert "hatchling" not in r2.text

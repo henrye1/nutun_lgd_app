@@ -32,6 +32,7 @@ export function DataPage() {
       </div>
       <h2>Required objects</h2>
       {objects.isLoading && <p>Loading objects…</p>}
+      {objects.error && <p className="bad">Could not check the objects: {String(objects.error)}</p>}
       {objects.data && (
         <table className="grid">
           <thead>

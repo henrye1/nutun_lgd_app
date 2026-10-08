@@ -27,3 +27,11 @@ def test_sql_auth_uses_user_and_password_and_is_not_logged(monkeypatch):
 def test_unconfigured_when_server_missing(monkeypatch):
     monkeypatch.delenv("NUTUN_DB_SERVER", raising=False)
     assert not Settings(_env_file=None).client_db_configured()
+
+
+def test_connect_string_refuses_empty_server(monkeypatch):
+    import pytest
+
+    monkeypatch.delenv("NUTUN_DB_SERVER", raising=False)
+    with pytest.raises(ValueError, match="NUTUN_DB_SERVER"):
+        Settings(_env_file=None).odbc_connect_string()

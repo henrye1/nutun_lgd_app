@@ -116,7 +116,12 @@ class SqlServerCatalog:
 def check_objects(catalog: Catalog) -> list[ObjectStatus]:
     out = []
     for req in REQUIRED_OBJECTS:
-        info = catalog.object_info(req.name)
+        try:
+            info = catalog.object_info(req.name)
+        except Exception as exc:  # the database is down or refuses the login: say so, never 500
+            out.append(ObjectStatus(req.name, req.kind, exists=False,
+                                    hint=f"cannot check: {type(exc).__name__}: {str(exc)[:200]}"))
+            continue
         if info is None:
             hint = f"Run {req.sql_file} in SSMS" if req.sql_file else "Run ACM_Pipeline_Simplified.sql to rebuild this table"
             out.append(ObjectStatus(req.name, req.kind, exists=False, hint=hint))

@@ -25,5 +25,7 @@ if DIST.exists():
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):
-        target = DIST / path
-        return FileResponse(target if path and target.is_file() else DIST / "index.html")
+        root = DIST.resolve()
+        target = (DIST / path).resolve()
+        inside = target.is_relative_to(root) and target != root
+        return FileResponse(target if path and inside and target.is_file() else DIST / "index.html")
