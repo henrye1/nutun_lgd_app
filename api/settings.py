@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     db_trust_cert: bool = True
     db_driver: str = "ODBC Driver 18 for SQL Server"
     run_store_url: str = "sqlite:///data/nutun_app.db"
+    vb_override_csv: str = ""  # the workbook VB_OVERRIDE sheet exported to CSV (not a SQL table)
+    fixtures_dir: str = "tests/fixtures/private"
 
     def client_db_configured(self) -> bool:
         return bool(self.db_server and self.db_name)
